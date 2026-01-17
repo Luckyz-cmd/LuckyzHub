@@ -1,0 +1,176 @@
+-- SERVICES
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local Workspace = game:GetService("Workspace")
+
+-- PLAYER
+local player = Players.LocalPlayer
+local char = player.Character or player.CharacterAdded:Wait()
+local humanoid = char:WaitForChild("Humanoid")
+local root = char:WaitForChild("HumanoidRootPart")
+
+-- STATES
+local noclip = false
+local fly = false
+local infiniteJump = false
+local flySpeed = 60
+
+-- =========================
+-- GUI (NEON STYLE)
+-- =========================
+local gui = Instance.new("ScreenGui", player.PlayerGui)
+gui.Name = "LUCKYZ_HUB"
+gui.ResetOnSpawn = false
+
+local frame = Instance.new("Frame", gui)
+frame.Size = UDim2.new(0, 240, 0, 280)
+frame.Position = UDim2.new(0.05,0,0.25,0)
+frame.BackgroundColor3 = Color3.fromRGB(15,15,15)
+frame.Active = true
+frame.Draggable = true
+frame.BorderSizePixel = 0
+Instance.new("UICorner", frame).CornerRadius = UDim.new(0,16)
+
+-- TITLE
+local title = Instance.new("TextLabel", frame)
+title.Size = UDim2.new(1,0,0,50)
+title.Text = "LUCKYZ HUB"
+title.TextColor3 = Color3.fromRGB(0,255,255)
+title.BackgroundColor3 = Color3.fromRGB(0,0,0)
+title.Font = Enum.Font.GothamBold
+title.TextSize = 18
+title.BorderSizePixel = 0
+Instance.new("UICorner", title).CornerRadius = UDim.new(0,16)
+
+-- MINIMIZE BUTTON
+local minimize = Instance.new("TextButton", title)
+minimize.Size = UDim2.new(0,50,1,0)
+minimize.Position = UDim2.new(1,-50,0,0)
+minimize.Text = "-"
+minimize.TextSize = 24
+minimize.Font = Enum.Font.GothamBold
+minimize.TextColor3 = Color3.fromRGB(0,255,255)
+minimize.BackgroundTransparency = 1
+
+-- CONTENT
+local content = Instance.new("Frame", frame)
+content.Position = UDim2.new(0,0,0,55)
+content.Size = UDim2.new(1,0,1,-55)
+content.BackgroundTransparency = 1
+local layout = Instance.new("UIListLayout", content)
+layout.Padding = UDim.new(0,10)
+
+-- BUTTON CREATOR
+local function createButton(text)
+	local btn = Instance.new("TextButton")
+	btn.Size = UDim2.new(0.9,0,0,45)
+	btn.Position = UDim2.new(0.05,0,0,0)
+	btn.Text = text
+	btn.Font = Enum.Font.Gotham
+	btn.TextSize = 16
+	btn.TextColor3 = Color3.fromRGB(0,255,255)
+	btn.BackgroundColor3 = Color3.fromRGB(20,20,20)
+	btn.BorderSizePixel = 0
+	local cor = Instance.new("UICorner", btn)
+	cor.CornerRadius = UDim.new(0,12)
+	btn.Parent = content
+	return btn
+end
+
+-- BUTTONS
+local noclipBtn = createButton("Noclip: OFF")
+local flyBtn = createButton("Fly: OFF")
+local jumpBtn = createButton("Jump Infinito: OFF")
+
+-- =========================
+-- NOCLIP
+-- =========================
+RunService.Stepped:Connect(function()
+	if noclip then
+		for _, part in pairs(char:GetDescendants()) do
+			if part:IsA("BasePart") then
+				part.CanCollide = false
+			end
+		end
+	end
+end)
+
+-- =========================
+-- FLY (CONTROLADO PELA CÂMERA)
+-- =========================
+local bv, bg
+local function startFly()
+	bv = Instance.new("BodyVelocity", root)
+	bv.MaxForce = Vector3.new(9e9,9e9,9e9)
+	bv.Velocity = Vector3.new(0,0,0)
+
+	bg = Instance.new("BodyGyro", root)
+	bg.MaxTorque = Vector3.new(9e9,9e9,9e9)
+	bg.CFrame = root.CFrame
+
+	RunService.RenderStepped:Connect(function()
+		if fly then
+			local cam = Workspace.CurrentCamera
+			bg.CFrame = root.CFrame
+
+			-- DIREÇÃO da câmera
+			local dir = Vector3.new(0,0,0)
+			if UserInputService:IsKeyDown(Enum.KeyCode.W) then dir += cam.CFrame.LookVector end
+			if UserInputService:IsKeyDown(Enum.KeyCode.S) then dir -= cam.CFrame.LookVector end
+			if UserInputService:IsKeyDown(Enum.KeyCode.A) then dir -= cam.CFrame.RightVector end
+			if UserInputService:IsKeyDown(Enum.KeyCode.D) then dir += cam.CFrame.RightVector end
+
+			-- MOVIMENTO MOBILE: sempre para frente da câmera
+			if fly and not UserInputService.KeyboardEnabled then
+				dir = cam.CFrame.LookVector
+			end
+
+			bv.Velocity = dir.Unit * flySpeed
+		end
+	end)
+end
+
+local function stopFly()
+	if bv then bv:Destroy() end
+	if bg then bg:Destroy() end
+end
+
+-- =========================
+-- BUTTON LOGIC
+-- =========================
+noclipBtn.MouseButton1Click:Connect(function()
+	noclip = not noclip
+	noclipBtn.Text = noclip and "Noclip: ON" or "Noclip: OFF"
+end)
+
+flyBtn.MouseButton1Click:Connect(function()
+	fly = not fly
+	flyBtn.Text = fly and "Fly: ON" or "Fly: OFF"
+	if fly then startFly() else stopFly() end
+end)
+
+jumpBtn.MouseButton1Click:Connect(function()
+	infiniteJump = not infiniteJump
+	jumpBtn.Text = infiniteJump and "Jump Infinito: ON" or "Jump Infinito: OFF"
+end)
+
+-- =========================
+-- MINIMIZE / MAXIMIZE
+-- =========================
+local minimized = false
+minimize.MouseButton1Click:Connect(function()
+	minimized = not minimized
+	content.Visible = not minimized
+	frame.Size = minimized and UDim2.new(0,240,0,50) or UDim2.new(0,240,0,280)
+	minimize.Text = minimized and "+" or "-"
+end)
+
+-- =========================
+-- JUMP INFINITO
+-- =========================
+UserInputService.JumpRequest:Connect(function()
+	if infiniteJump then
+		humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
+	end
+end)
